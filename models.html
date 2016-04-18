@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 
     <head>
@@ -112,13 +113,13 @@ body {
 #about {
     height: 225px;
     width: 1000px;
-    background-color: #66FFFF;
+    
     left: 20;
     z-index: 6;
     position: absolute;
     top: 202;
     text-align: left;
-    opacity: 0.62;
+    
 }
 
 #first {
@@ -247,15 +248,15 @@ body {
         <img class="bottom" src="http://planetvigil.businesscatalyst.com/filmtechstudios/images/home/u19.png" />
         	<h1 id=tag>Modeling the Effects of Policy Changes on the Spread of Ebola</h1>
        <div id=homelink>
-             <a href="ebolahome.html"><h4 class = "homelink">Home</h4></a>
+             <a href="http://designrockstar.github.io"><h4 class = "homelink">Home</h4></a>
         </div>
         <div id=aulink>
-             <a href="ebolafinalreport.html"><h4 class = "aulink">Final Report</h4></a>
+             <a href="http://designrockstar.github.io/finalrepot.html"><h4 class = "aulink">Final Report</h4></a>
         </div>
         <div id=plink>
-             <a href="ebolamodels.html"><h4 class = "plink">Models</h4></a>
+             <a href="http://designrockstar.github.io/models"><h4 class = "plink">Models</h4></a>
         </div>
-         <a href="finalreport.html"><h1 class = au>Abstract</h1></a>
+         <a href="http://designrockstar.github.io/finalrepot.html"><h1 class = au>Abstract</h1></a>
         <div id=about>
             <p id=first>The 2014 Ebola outbreak was the worst Ebola outbreak ever recorded according to the World Health Organization. The Ebola Virus Disease (EVD) has mainly affected the West African populations. These countries include Guinea, Liberia, and Sierra
                 Leone. There are five known strains of the Ebola virus all causing EVD. The particular strain researched in this project is the Zaire Ebolavirus (EBOV). EVD is spread by primates, infected fruit bats, by the consequential contact of bodily
@@ -264,18 +265,37 @@ body {
                 model library. This was adapted to simulate EVD as well as different policy changes preventing EVD. Four different models depicting different policy changes a country might put into place were created. The first is implementing travel
                 restrictions on two populations. The second is applying contact tracing in conjunction with quarantine. The third is employing isolation and self-monitoring as well as quarantine. The fourth is modeling transportation between four different
                 villages. The data from the second and third models show that overall quarantine is an effective method to slow the progression of the disease. However, quarantining suspected individuals without keeping them separate from infectious individuals
-                does not help stop the spread of the disease. Quarantining in conjunction with self-monitoring is very effective.
+                does not help stop the spread of the disease. Quarantining in conjunction with self-monitoring is very effective.<br>
+                
+<br> <b>Methods/Materials</b>  Several EVD models have been created using NetLogo, an agent based programming language.  The models show the spread of EVD throughout a contained space, modeling a community of 1000 people.  This model takes into account the number of people in the simulation – 1000, the infectiousness of the virus – 23%, the chance of the host to recover – 63%, and the duration of the virus – 35 days.  These variables are set to effectively model EVD.   
+
+Once an individual comes in contact with an infectious individual there is a 23% chance they will become infected.  Once a person is infected it takes 21 days for the individual to become infectious/show symptoms.  The person is then infectious for an average of 30 days.  After 30 days the individual either recovers or dies.  There is a 63% chance an individual will recover.  If the individual does recover, they will become immune to the virus. 
+
+The model also simulates natural death in the population.  Infected individuals are shown by the color red.  Healthy individuals are shown by the color green.  Immune individuals are shown by the color gray.
+
+In the first model two populations are created and are separated by a wall.  This wall has a certain number of openings allowing individuals to cross into the other population.  This model effectively models two different populations with a barrier between them.  This could model two different villages, two countries, or two continents. 
+
+In the second model, one person is infected to begin.  When a healthy individual is touched by an infected person they turn yellow, modeling the contact tracing.  When a yellow person touches a healthy person the healthy person turns purple.  This furthers the concept of contact tracing. 
+
+Once a person is infected, they do not know whether they are infected or not.  If they are infected they turn into a triangle for 21 days.  After an infected individual has been infected for 21 days, they then become infectious.  This is shown when an individual turns into a circle.  However, for a period of five days, the person does not know they have EVD or is in denial.  Once they know they have contracted EVD (after the five days) they turn red. 
+
+During this time a certain percentage of the infected and suspected population will be sent to quarantine.  Ten tests of each scenario were taken.  The number of people killed by EVD was recorded each time.  An average of the ten tests was taken.  The standard deviation of the averages was calculated, as well as the standard deviation of the mean.  The standard deviation is the range of probable deaths.  The standard deviation of the mean is the range of error on the probable deaths.
+
+The third model has many of the same parameters as the second, in respect to the spread of EVD and contact tracing.  However, instead of being sent to quarantine right away, the suspected individuals are sent to an isolated facility, usually their own home and told to self-monitor for symptoms of EVD.  For the purposes of this model, suspected individuals remain stationary until they develop symptoms, usually after 21 days.  For the purposes of the model, stationary individuals have no chance to infect others while self-monitoring.  Even though it might look like they touch others, for the purposes of the model they have no contact with others.
+
+In the fourth model, individuals are broken up into four different villages.  As the individuals move around randomly they are inclined with some probability to stay close to their   original village, however, some move away into other villages.  This models the transportation of a virus over four villages.
+             
             </p>
         </div>
-        <a href="ebolahome.html">
+        <a href="http://designrockstar.github.io">
             <p class=bottomau>Home</p>
         </a>
 
         
-        <a href="ebolafinalreport.html">
+        <a href="http://designrockstar.github.io/finalrepot.html">
             <p class=bottomos>Final Report</p>
             </a>
-                <a href="ebolamodels">
+                <a href="http://designrockstar.github.io/models">
                     <p class=bottomop>Models</p>
                 </a>
     </body>
