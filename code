@@ -1,0 +1,834 @@
+Wall virus Model
+turtles-own
+  [ sick?                ;; if true, the turtle is infectious
+    remaining-immunity   ;; how many weeks of immunity the turtle has left
+    sick-time            ;; how long, in weeks, the turtle has been infectious
+    age                  ;; how many weeks old the turtle is
+    infectious? ]        ;; if the turtle is infectious        
+globals
+  [ %infected            ;; what % of the population is infectious
+    %immune              ;; what % of the population is immune
+    lifespan             ;; the lifespan of a turtle
+    chance-reproduce     ;; the probability of a turtle generating an offspring each tick
+    carrying-capacity    ;; the number of turtles that can be in the world at one time
+    immunity-duration    ;; how many weeks immunity lasts
+    units                ;; how much time a tick is worth
+    victims              ;; how many people have died
+    zero]                ;; if any infected individuals still exist
+;; The setup is divided into four procedures
+to setup
+  clear-all
+  setup-constants
+  setup-turtles
+  setup-patches
+  update-global-variables
+  update-display
+  set victims 0
+  set zero false
+  reset-ticks
+end
+;; We create a variable number of turtles of which 100 are infectious,
+;; and distribute them randomly
+to setup-turtles
+  create-turtles number-people
+  [
+   setxy random-xcor random-ycor
+   set age random lifespan
+   set sick-time duration
+   set remaining-immunity 0
+   set size 1.5  ;; easier to see
+   get-healthy
+  ]
+  ask n-of number-infected turtles with [pxcor > wall-position]
+    [ get-sick ]
+end
+to setup-patches
+end
+;;i made the wall able to be reset during the middle of a virus test run
+to reset-wall
+   ask patches [ set pcolor black ]
+  let wall-number ((max-pycor - min-pycor + 1) * (wall-porasity / 100))
+  ask n-of wall-number patches with [ pxcor = wall-position]
+    [set pcolor gray]
+end
+to get-sick ;; turtle procedure
+  set sick? true
+  set remaining-immunity 0
+end
+to get-healthy ;; turtle procedure
+  set sick? false
+  set remaining-immunity 0
+  set sick-time 0
+end
+to become-immune ;; turtle procedure
+  set sick? false
+  set sick-time 0
+  set remaining-immunity immunity-duration
+end
+
+;; This sets up basic constants of the model.
+to setup-constants
+  set lifespan 80 * 52      ;; 50 times 52 weeks = 50 years = 2600 weeks old
+  set carrying-capacity 1000
+  set chance-reproduce 0
+  set immunity-duration 52
+  set units 1 / 52 / 0.35
+end
+to go
+  ask turtles [
+    get-older
+    move
+    if sick? [ recover-or-die ]
+    ifelse sick? [ infect ] [ reproduce ]
+  ]
+  if zero = true [
+    setup
+    reset-wall
+    go
+    set zero false
+  ]
+  update-data
+  update-global-variables
+  update-display
+  tick
+end
+to update-global-variables
+  if count turtles > 0
+    [ set %infected (count turtles with [ sick? ] / count turtles) * 100
+      set %immune (count turtles with [ immune? ] / count turtles) * 100 ]
+end
+to update-display
+  ask turtles
+    [ if shape != turtle-shape [ set shape turtle-shape ]
+      set color ifelse-value sick? [ red ] [ ifelse-value immune? [ grey ] [ green ] ] ]
+end
+to update-data
+  if %infected = 0 [
+    print victims
+    set zero true
+  ]
+end
+;;Turtle counting variables are advanced.
+to get-older ;; turtle procedure
+  ;; Turtles die of old age once their age exceeds the
+  ;; lifespan (set at 50 years in this model).
+  set age age + (units)
+  if age > lifespan [ die ]
+  if immune? [ set remaining-immunity remaining-immunity - units ]
+  if sick? [ set sick-time sick-time + units ]
+end
+;; Turtles move about at random.
+to move ;; turtle procedure
+  rt random 100
+  lt random 100
+  fd 1
+  if pcolor = gray [
+    bk 1
+  ]   ;;if  pcolor = gray and inside?  [ if random-float 100 > 1 [bk 1 ]]
+;; BEGINNING OF VILLAGE
+end
+;; If a turtle is sick, it infects other turtles on the same patch.
+;; Immune turtles don't get sick.
+to infect ;; turtle procedure
+  if sick-time > 21 [
+    ask other turtles-here with [ not sick? and not immune? ]
+      [ if random-float 100 < infectiousness
+        [ get-sick ] ]
+  ]
+end
+;; Once the turtle has been sick long enough, it
+;; either recovers (and becomes immune) or it dies.
+to recover-or-die ;; turtle procedure
+  if sick-time > duration                        ;; If the turtle has survived past the virus' duration, then
+    [ ifelse random-float 100 < chance-recover   ;; either recover or die
+      [ become-immune ]
+      [ set victims victims + 1
+        die ] ]
+end
+;; If there are less turtles than the carrying-capacity
+;; then turtles can reproduce.
+to reproduce
+  if count turtles < carrying-capacity and random-float 100 < chance-reproduce
+    [ hatch 1
+      [ set age 1
+        lt 45 fd 1
+        get-healthy ] ]
+end
+to-report immune?
+  report remaining-immunity > 0
+end
+
+to-report inside?
+  report xcor < wall-position
+end
+to startup
+  setup-constants ;; so that carrying-capacity can be used as upper bound of number-people slider
+end
+Quarantine Model
+turtles-own
+  [ sick?                        ;; if true, the turtle is infectious
+    unknown-sick?        ;; if true, the turtle is infected
+    remaining-immunity;; how many weeks of immunity the turtle has left
+    sick-time                 ;; how long, in weeks, the turtle has been infectious
+    unknown-sick-time ;; how long, in weeks, the turtle has been infected
+    suspected-time        ;; how long, in weeks, the turtle has been suspected of touching an infected individual
+    age                          ;; how many weeks old the turtle is
+    quarantined?           ;; if the turtle is supposed to be quarantined
+    want-quarantine      ;; if the turtle wants to be put into quarantine
+    refuse-quarantine    ;; if the turtle refuses quarantine
+    touching?                ;; if the turtle is suspected of touching an infected individual
+    touchingsus?           ;; if the turtle is suspected of touching a suspected individual
+    ]
+globals
+  [ %infected               ;; what % of the population is infectious
+    %immune               ;; what % of the population is immune
+    lifespan                  ;; the lifespan of a turtle
+    units                       ;; how long a tick in the model is
+    chance-reproduce  ;; the probability of a turtle generating an offspring each tick
+    carrying-capacity   ;; the number of turtles that can be in the world at one time
+    immunity-duration ;; how many weeks immunity lasts
+    %quarantined         ;; what % of population is inclined to be in quarantine
+    victims                   ;; how many people have died
+    number-sick           ;; how many people are sick
+    incubation-time      ;; how long until an individual developed symptoms
+    seek-help-time        ;; how long it takes for an individual to recognize they have EVD
+    recovery-time         ;; how long it takes for an individual to recover
+    unknown-infected-time ;; incubation-time + seek-help-time
+    chance-recover-quarantine ;; the probability of a person recovering in quarantine
+   ]
+to setup
+  clear-all
+  setup-constants
+  setup-turtles
+  setup-patches
+  update-global-variables
+  update-display
+  clear-output
+  reset-ticks
+end
+;; Creates a variable number of turtles of which 1 is infectious,
+;; and distribute them randomly
+to setup-turtles
+  create-turtles number-people
+    [ setxy random-xcor random-ycor
+      set age random lifespan
+      set sick-time 0
+      set unknown-sick-time 0
+      set remaining-immunity 0
+      set suspected-time 0
+      set size 1.5  ;; easier to see
+      get-healthy
+      set shape "person"
+      set want-quarantine false
+      set refuse-quarantine false
+      set touching? false
+      set touchingsus? false
+      set unknown-sick? false
+    ]
+  ask n-of (beginning-infected) turtles
+    [ get-sick ]
+  ask n-of 1 turtles
+    [ go-quarantine ]
+end
+;; Creates the quarantine box
+to setup-patches
+ ask patches [set pcolor blue]
+ ask patches with [pxcor = 30]
+ [set pcolor white]
+ ask patches with [pxcor = 50]
+ [set pcolor white]
+ ask patches with [pxcor = 40 and pycor < 40]
+ [set pcolor white]
+ ask patches with [pycor = 30]
+ [set pcolor white]
+  ask patches with [pycor = 40]
+ [set pcolor white]
+ ask patches with [pycor = 50]
+ [set pcolor white]
+ ask patches with [pxcor < 30 ]
+ [set pcolor black]
+ ask patches with [pxcor > 50 ]
+ [set pcolor black]
+ ask patches with [pycor < 30 ]
+ [set pcolor black]
+ ask patches with [pycor > 50]
+ [set pcolor black]
+end
+;; makes the first turtle infectious
+to get-sick ;; turtle procedure
+ set number-sick number-sick + 1
+ set sick? true
+ set remaining-immunity 0
+ set touching? false
+ set touchingsus? false
+ set shape "circle"
+ set unknown-sick? false
+end
+to get-sick-unknown ;; determines if a suspected individual is infected
+  if random-float 100 < infectiousness [
+    set unknown-sick? true
+    set remaining-immunity 0
+    set shape "triangle"
+  ]
+  set touchingsus? false
+  set touching? true
+end
+to get-sick-unknownsus ;; determines if a suspected individual is infected
+  if random-float 100 < infectiousness [
+    set unknown-sick? true
+    set remaining-immunity 0
+    set shape "triangle"
+  ]
+  set touching? false
+  set touchingsus? true
+end
+to get-healthy ;; when a suspected person is no longer suspected
+  set sick? false
+  set remaining-immunity 0
+  set sick-time 0
+  set unknown-sick-time 0
+  set quarantined? false
+  set touching? false
+  set touchingsus? false
+end
+to become-immune ;; if an infected individual recovers from the disease, makes them immune
+  set sick? false
+  set sick-time 0
+  set unknown-sick-time 0
+  set remaining-immunity immunity-duration
+  set quarantined? false
+  set touching? false
+  set touchingsus? false
+  set unknown-sick? false
+  set shape "person"
+end
+;; This sets up basic constants of the model.
+to setup-constants
+  set lifespan 80 * 52      ;; 80 times 52 weeks  = 80 years = 2600 weeks old
+  set carrying-capacity 1000;; how many turtles the model can hold
+  set chance-reproduce 0    ;; the chance the turtles can reproduce
+  set immunity-duration 52 / 3.5 ;; how long the turtles are immune
+  set units 1 / 52 / .35    ;; how long each tick represents
+  set victims 0             ;; number of people dead initially
+  set number-sick 0         ;; number of people infected initially
+  set incubation-time 21    ;; how long it takes for symptoms to show
+  set seek-help-time 5      ;; how long it takes for turtles to go to quarantine
+  set recovery-time 30      ;; how long it takes for turtles to recover
+  set unknown-infected-time incubation-time + seek-help-time
+  set chance-recover-quarantine chance-recover + 5
+end
+to go
+  ask turtles [
+    get-older
+    if sick? [ recover-or-die ]
+    if unknown-sick? = true and suspected-time >= unknown-infected-time [show-sick]
+    ifelse (sick? or (unknown-sick? and (suspected-time >= incubation-time))) [ infect] [ reproduce ]
+    if quarantine-infected? [
+      if sick?  [go-quarantine]
+    ]
+    if quarantine-suspected? [
+      if touching?  [go-quarantine]
+    ]
+    if quarantine-sustouching? [
+      if touchingsus?  [go-quarantine]
+    ]
+    if (touching? or touchingsus?) and unknown-sick? = false and suspected-time > incubation-time + recovery-time [get-healthy]
+    move
+    if count other turtles-here with [ sick? = true] > 0 and color = green [
+      get-sick-unknown
+    ]
+    if count other turtles-here with [ touching? = true] > 0 and color = green [
+      set touchingsus? true
+      if count other turtles-here with [unknown-sick-time > 21] > 0 [
+        get-sick-unknownsus
+      ]
+    ]
+  ]
+  update-global-variables
+  update-display
+  tick
+end
+to update-global-variables
+  if count turtles > 0
+    [ set %infected (count turtles with [ sick? ] / count turtles) * 100
+      set %immune (count turtles with [ immune? ] / count turtles) * 100
+      if %infected > 0 [set %quarantined ( count turtles with [pcolor = blue and pycor > 40] / (count turtles with [sick?] + count turtles with [touching?] + count turtles with [touchingsus?])) * 100]
+          ]
+end
+to update-display
+  ask turtles
+    [ set color ifelse-value sick? [ red ] [ ifelse-value immune? [gray] [ifelse-value touching? [yellow][ifelse-value touchingsus? [violet] [green]]] ] ]
+end
+;;Turtle counting variables are advanced.
+to get-older ;; turtle procedure
+  ;; Turtles die of old age once their age exceeds the
+  ;; lifespan (set at 80 years in this model).
+  set age age + (units)
+  if age > lifespan [ die ]
+  if immune? [ set remaining-immunity remaining-immunity - (units) ]
+  if sick? [ set sick-time sick-time + (units) ]
+  if unknown-sick? = true [set unknown-sick-time unknown-sick-time + (units)]
+  if touching? [set suspected-time suspected-time + (units) ]
+  if touchingsus? [set suspected-time suspected-time + (units) ]
+end
+;; Turtles move about at random.
+to move ;; turtle procedure
+  if pcolor = blue and color = yellow and (pycor > 40 or pxcor > 40)
+    [move-to patch 34 35]
+  if pcolor = blue and color = gray
+    [move-to one-of patches]
+  if pcolor = blue and color = green
+    [move-to one-of patches]
+  if pcolor = blue and color = red and pycor < 40
+    [move-to patch 39 44]
+  ifelse quarantined? = true [
+    ifelse %quarantined < quarantine and %quarantined < 100 [
+      if pcolor = black [
+        facexy 38 40
+        fd 1
+      ]
+    ] [
+      rt random 100
+      lt random 100
+      fd 1
+    ]
+  ] [
+    rt random 100
+    lt random 100
+    fd 1
+    if pcolor = white [ bk 1]
+ ]
+ if pcolor = blue [
+   rt random 100
+   lt random 100
+   fd 1
+   if pcolor = white [ bk 1]
+ ]
+end
+to go-quarantine
+  if want-quarantine = true and refuse-quarantine = true
+ [set want-quarantine false
+   set refuse-quarantine false
+ ]
+ if want-quarantine = false and refuse-quarantine = false
+ [ifelse random-float 100 < quarantine
+ [set want-quarantine true] [set refuse-quarantine true]
+ ]
+ ifelse want-quarantine = true and refuse-quarantine = false
+  [ set quarantined? true ] [set quarantined? false]
+if pcolor = white and sick? = true and quarantined? = true
+[ move-to patch 39 44]
+if pcolor = white and touching? = true and quarantined? = true
+[ move-to patch 34 35]
+if pcolor = white and touchingsus? = true and quarantined? = true
+[ move-to patch 44 35]
+end
+;; If a turtle is sick, it infects other turtles on the same patch.
+;; Immune turtles don't get sick.
+to infect ;; turtle procedure
+  set shape "circle"
+  ask other turtles-here with [ not sick? and not immune? ]
+    [get-sick-unknown ]
+end
+;; Once the turtle has been sick long enough, it
+;; either recovers (and becomes immune) or it dies.
+to recover-or-die ;; turtle procedure
+  if sick-time >= recovery-time                     ;; If the turtle has survived past the virus' duration, then
+  [ifelse pcolor = blue
+    [ifelse random-float 100 < (chance-recover-quarantine)  ;; either recover or die in quarantine
+       [become-immune ]
+       [set victims victims + 1
+       die ] ]
+    [ifelse random-float 100 < chance-recover   ;; either recover or die
+       [become-immune ]
+       [set victims victims + 1
+       die ] ] ]
+end
+to show-sick ;; turtles become infectious
+  set number-sick number-sick + 1
+  set sick? true
+  set unknown-sick? false
+  set touching? false
+  set touchingsus? false
+  set suspected-time 0
+  set sick-time seek-help-time
+end
+;; If there are less turtles than the carrying-capacity
+;; then turtles can reproduce.
+to reproduce
+  if count turtles < carrying-capacity and random-float 100 < chance-reproduce and age > 18
+    [ hatch 1
+      [ set age 1
+        lt 45 fd 1
+        get-healthy ] ]
+end
+to-report immune?
+  report remaining-immunity > 0
+end
+to startup
+  setup-constants ;; so that carrying-capacity can be used as upper bound of number-people slider
+end
+Quarantine and Self-monitoring model
+turtles-own
+  [ sick?
+    unknown-sick?             ;; if true, the turtle is infectious
+    remaining-immunity   ;; how many weeks of immunity the turtle has left
+    sick-time
+    unknown-sick-time
+    suspected-time          ;; how long, in weeks, the turtle has been infectious
+    age                  ;; how many weeks old the turtle is
+    quarantined?
+    want-quarantine
+    refuse-quarantine
+    touching?
+    touchingsus?
+    monitoring?
+    ]         ;; if the turtle has been in contact with an infected person
+globals
+  [ %infected            ;; what % of the population is infectious
+    %immune               ;; what % of the population is immune
+    turtles-touching
+    lifespan             ;; the lifespan of a turtle
+    units
+    chance-reproduce     ;; the probability of a turtle generating an offspring each tick
+    carrying-capacity    ;; the number of turtles that can be in the world at one time
+    immunity-duration    ;; how many weeks immunity lasts
+    %quarantined
+    victims
+    number-sick
+    incubation-time
+    seek-help-time
+    recovery-time
+    unknown-infected-time
+    chance-recover-quarantine
+    zero
+    ]       ;; what % of population is inclined to be in quarantine
+;; The setup is divided into four procedures
+to setup
+  clear-all
+    setup-constants
+  setup-turtles
+  setup-patches
+  update-global-variables
+  update-display
+  clear-output
+  reset-ticks
+end
+;; We create a variable number of turtles of which 10 are infectious,
+;; and distribute them randomly
+to update-data
+  if (count turtles with [sick?] = 0) and (count turtles with [touching?] = 0) and (count turtles with [touchingsus?] = 0) [
+    print victims
+    set zero true
+  ]
+end
+to setup-turtles
+  create-turtles number-people
+    [ setxy random-xcor random-ycor
+      set age random lifespan
+      set sick-time 0
+      set unknown-sick-time 0
+      set remaining-immunity 0
+      set suspected-time 0
+      set size 1.5  ;; easier to see
+      get-healthy
+      set shape "person"
+      set want-quarantine false
+      set refuse-quarantine false
+      set touching? false
+      set touchingsus? false
+      set unknown-sick? false
+    ]
+  ask n-of (beginning-infected) turtles
+    [ get-sick ]
+end
+to setup-patches
+ ask patches [set pcolor blue]
+ ask patches with [pxcor = 30]
+ [set pcolor white]
+ ask patches with [pxcor = 50]
+ [set pcolor white]
+ ask patches with [pxcor = 40 and pycor < 40]
+ [set pcolor white]
+ ask patches with [pycor = 30]
+ [set pcolor white]
+  ask patches with [pycor = 40]
+ [set pcolor white]
+ ask patches with [pycor = 50]
+ [set pcolor white]
+ ask patches with [pxcor < 30 ]
+ [set pcolor black]
+ ask patches with [pxcor > 50 ]
+ [set pcolor black]
+ ask patches with [pycor < 30 ]
+ [set pcolor black]
+ ask patches with [pycor > 50]
+ [set pcolor black]
+end
+to get-sick ;; turtle procedure
+ set number-sick number-sick + 1
+ set sick? true
+ set remaining-immunity 0
+ set touching? false
+ set touchingsus? false
+ set shape "circle"
+ set unknown-sick? false
+ set want-quarantine false
+ set refuse-quarantine true
+end
+to get-sick-unknown ;; turtle procedure
+  if random-float 100 < infectiousness [
+    set unknown-sick? true
+    set remaining-immunity 0
+    set shape "triangle"
+  ]
+  set touchingsus? false
+  set touching? true
+end
+to get-sick-unknownsus ;; turtle procedure
+  if random-float 100 < infectiousness [
+    set unknown-sick? true
+    set remaining-immunity 0
+    set shape "triangle"
+  ]
+  set touching? false
+  set touchingsus? true
+end
+to get-healthy ;; turtle procedure
+  set sick? false
+  set remaining-immunity 0
+  set sick-time 0
+  set unknown-sick-time 0
+  set quarantined? false
+  set touching? false
+  set touchingsus? false
+  set monitoring? false
+end
+to become-immune ;; turtle procedure
+  set sick? false
+  set sick-time 0
+  set unknown-sick-time 0
+  set remaining-immunity immunity-duration
+  set quarantined? false
+  set touching? false
+  set touchingsus? false
+  set unknown-sick? false
+  set shape "person"
+end
+;; This sets up basic constants of the model.
+to setup-constants
+  set lifespan 80 * 52      ;; 80 times 52 weeks  = 80 years = 2600 weeks old
+  set carrying-capacity 1000
+  set chance-reproduce 0
+  set immunity-duration 52 / 3.5
+  set units 1 / 52 / .35
+  set victims 0
+  set number-sick 0
+  set incubation-time 21
+  set seek-help-time 5
+  set recovery-time 30
+  set unknown-infected-time incubation-time + seek-help-time
+  set chance-recover-quarantine chance-recover + 5
+end
+to go
+  ask turtles [
+    get-older
+    if sick? [ recover-or-die ]
+    if unknown-sick? = true and suspected-time >= unknown-infected-time [show-sick]
+    ifelse (sick? or (unknown-sick? and (suspected-time >= incubation-time))) [ infect] [ reproduce ]
+    if quarantine-infected? [
+      if sick?  [go-quarantine]
+    ]
+    if touching?  [self-monitor]
+    if touchingsus?  [self-monitor]
+    if (touching? or touchingsus?) and unknown-sick? = false and suspected-time > incubation-time + recovery-time [get-healthy]
+    if (touching? or touchingsus?) and shape = "circle" [ go-quarantine ]
+    move
+    if count other turtles-here with [ sick? ] > 0 and color = green [
+      get-sick-unknown
+    ]
+    ;;if count other turtles-here with [ touching? = true and unknown-sick? = true ] > 0 and color = green [
+      ;;set touchingsus? true
+      ;;if count other turtles-here with [unknown-sick-time > 21] > 0 [
+        ;;get-sick-unknownsus
+      ;;]
+    ;;]
+  ]
+  if zero = true [
+    setup
+    go
+    set zero false
+  ]
+  update-data
+  update-global-variables
+  update-display
+  tick
+end
+to update-global-variables
+  if count turtles > 0
+    [ set %infected (count turtles with [ sick? ] / count turtles) * 100
+      set %immune (count turtles with [ immune? ] / count turtles) * 100
+      if %infected > 0 [set %quarantined ( count turtles with [pcolor = blue and pycor > 40] / (count turtles with [sick?] + count turtles with [touching?] + count turtles with [touchingsus?])) * 100]
+          ]
+end
+to update-display
+  ask turtles
+    [ set color ifelse-value sick? [ red ] [ ifelse-value immune? [gray] [ifelse-value touching? [yellow][ifelse-value touchingsus? [violet] [green]]] ] ]
+end
+;;Turtle counting variables are advanced.
+to get-older ;; turtle procedure
+  ;; Turtles die of old age once their age exceeds the
+  ;; lifespan (set at 50 years in this model).
+  set age age + (units)
+  if age > lifespan [ die ]
+  if immune? [ set remaining-immunity remaining-immunity - (units) ]
+  if sick? [ set sick-time sick-time + (units) ]
+  if unknown-sick? = true [set unknown-sick-time unknown-sick-time + (units)]
+  if touching? [set suspected-time suspected-time + (units) ]
+  if touchingsus? [set suspected-time suspected-time + (units) ]
+end
+;; Turtles move about at random.
+to move ;; turtle procedure
+  if pcolor = blue and color = yellow and (pycor > 40 or pxcor > 40)
+    [move-to patch 34 35]
+  if pcolor = blue and color = violet and (pxcor < 40 )
+    [move-to patch 45 35]
+  if pcolor = blue and color = gray
+    [move-to one-of patches]
+  if pcolor = blue and color = green
+    [move-to one-of patches]
+  if pcolor = blue and color = red and pycor < 40
+    [move-to patch 39 44]
+  ifelse monitoring? = true [
+    set color magenta
+  ] [
+    ifelse quarantined? = true [
+      ifelse %quarantined < quarantine and %quarantined < 100 [
+        if pcolor = black [
+          facexy 38 40
+          fd 1
+        ]
+      ] [
+        rt random 100
+        lt random 100
+        fd 1
+      ]
+    ] [
+      rt random 100
+      lt random 100
+      fd 1
+      if pcolor = white [ bk 1]
+    ]
+  ]
+ if pcolor = blue [
+   rt random 100
+   lt random 100
+   fd 1
+   if pcolor = white [ bk 1]
+ ]
+end
+to go-quarantine
+ set monitoring? false
+ if quarantine-infected? and sick?
+ [ if want-quarantine = true and refuse-quarantine = true [
+     set want-quarantine false
+     set refuse-quarantine false
+   ]
+   if want-quarantine = false and refuse-quarantine = false [
+     ifelse random-float 100 < quarantine
+       [set want-quarantine true] [set refuse-quarantine true]
+   ]
+   ifelse want-quarantine = true and refuse-quarantine = false
+    [ set quarantined? true ] [set quarantined? false]
+ ]
+ if quarantine-suspected? and touching?
+ [ if want-quarantine = true and refuse-quarantine = true [
+      set want-quarantine false
+      set refuse-quarantine false
+   ]
+   if want-quarantine = false and refuse-quarantine = false [
+     ifelse random-float 100 < quarantine
+       [set want-quarantine true] [set refuse-quarantine true]
+   ]
+
+   ifelse want-quarantine = true and refuse-quarantine = false
+     [ set quarantined? true ] [set quarantined? false]
+  ]
+ if quarantine-sustouching? and touchingsus?
+ [ if want-quarantine = true and refuse-quarantine = true [
+    set want-quarantine false
+    set refuse-quarantine false
+ ]
+ if want-quarantine = false and refuse-quarantine = false [
+   ifelse random-float 100 < quarantine
+     [set want-quarantine true] [set refuse-quarantine true]
+ ]
+ ifelse want-quarantine = true and refuse-quarantine = false
+  [ set quarantined? true ] [set quarantined? false]
+ ]
+ if pcolor = white and sick? = true and quarantined? = true
+   [ move-to patch 39 44]
+ if pcolor = white and touching? = true and quarantined? = true
+   [ move-to patch 34 35]
+ if pcolor = white and touchingsus? = true and quarantined? = true
+   [ move-to patch 44 35]
+end
+to self-monitor
+  set monitoring? true
+end
+;; If a turtle is sick, it infects other turtles on the same patch.
+;; Immune turtles don't get sick.
+to infect ;; turtle procedure
+ set shape "circle"
+ ifelse monitoring? = true [
+   set color magenta
+ ][
+   if sick? = true [
+     ask other turtles-here with [ not sick? and not immune? and not monitoring?]
+     [get-sick-unknown ]
+   ]
+   if touching? = true [
+     ask other turtles-here with [ not sick? and not immune? and not monitoring?]
+     [get-sick-unknownsus ]
+   ]
+  ]
+end
+;; Once the turtle has been sick long enough, it
+;; either recovers (and becomes immune) or it dies.
+to recover-or-die ;; turtle procedure
+  if sick-time >= recovery-time                     ;; If the turtle has survived past the virus' duration, then
+  [ifelse pcolor = blue
+    [ifelse random-float 100 < (chance-recover-quarantine)  ;; either recover or die
+       [become-immune ]
+       [set victims victims + 1
+       die ] ]
+    [ifelse random-float 100 < chance-recover   ;; either recover or die
+       [become-immune ]
+       [set victims victims + 1
+       die ] ] ]
+end
+to show-sick ;; turtle procedure
+  set number-sick number-sick + 1
+  set sick? true
+  set unknown-sick? false
+  set touching? false
+  set touchingsus? false
+  set suspected-time 0
+  set sick-time seek-help-time
+end
+;; If there are less turtles than the carrying-capacity
+;; then turtles can reproduce.
+to reproduce
+  if count turtles < carrying-capacity and random-float 100 < chance-reproduce and age > 18
+    [ hatch 1
+      [ set age 1
+        lt 45 fd 1
+        get-healthy ] ]
+end
+to-report immune?
+  report remaining-immunity > 0
+end
+to startup
+  setup-constants ;; so that carrying-capacity can be used as upper bound of number-people slider
+end
+
